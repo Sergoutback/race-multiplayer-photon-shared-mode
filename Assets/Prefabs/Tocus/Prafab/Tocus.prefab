@@ -1548,12 +1548,12 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 2
-  m_Radius: 0.5
+  m_Radius: 0.8
   m_SlopeLimit: 45
   m_StepOffset: 0.3
-  m_SkinWidth: 0.08
+  m_SkinWidth: 0.1
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.7, z: 0}
 --- !u!114 &958904620152531637
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1583,7 +1583,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fb14bd4944e37a4a92e47938b6a2514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerSpeed: 2
+  Camera: {fileID: 0}
+  TurnSpeed: 1
+  Acceleration: 7
+  MaxSpeed: 40
+  Braking: 5
+  TurnAcceleration: 1.5
+  TurnMax: 1
+  BrakeStrength: 1
+  Gravity: -9.81
 --- !u!1 &1672185482629448
 GameObject:
   m_ObjectHideFlags: 0

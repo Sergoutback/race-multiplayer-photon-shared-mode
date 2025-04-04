@@ -4,19 +4,29 @@ using UnityEngine;
 public class PlayerMovement : NetworkBehaviour
 {
     public Camera Camera;
-    
+
     private CharacterController _controller;
 
-    public float PlayerSpeed = 2f;
-    
-    public float TurnSpeed = 100f; // rotation speed in degrees per second
-    
-    public float Acceleration = 5f;
-    public float MaxSpeed = 10f;
-    public float Braking = 10f;
+    [Header("Movement and rotation")]
+    public float TurnSpeed = 1f;
+    public float Acceleration = 7f;
+    public float MaxSpeed = 25f;
+    public float Braking = 5f;
+
+    [Header("Smooth turn")]
+    public float TurnAcceleration = 1.5f;
+    public float TurnMax = 1f;
+    private float turnAmount = 0f;
+
+    [Header("Smooth braking")]
+    public float BrakeStrength = 1f;
+    private float brakeTimer = 0f;
+
+    [Header("Gravity")]
+    public float Gravity = -9.81f;
+    private float verticalVelocity = 0f;
 
     private float _currentSpeed = 0f;
-
 
     private void Awake()
     {
@@ -28,48 +38,67 @@ public class PlayerMovement : NetworkBehaviour
         Quaternion cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
         Vector3 move = Vector3.zero;
         Vector3 moveDir = Vector3.zero;
-        bool isBraking = false;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-    // Mobile control
-    if (Input.touchCount > 0)
-    {
-        Touch touch = Input.GetTouch(0);
-        float screenWidth = Screen.width;
-        float x = touch.position.x;
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+            float screenWidth = Screen.width;
+            float screenHeight = Screen.height;
 
-        if (x < screenWidth * 0.33f)
-        {
-            // Turn left
-            moveDir = new Vector3(-1, 0, 1);
-        }
-        else if (x > screenWidth * 0.66f)
-        {
-            // Turn right
-            moveDir = new Vector3(1, 0, 1);
+            float x = touch.position.x;
+            float y = touch.position.y;
+
+            if (y < screenHeight * 0.5f)
+            {
+                if (x < screenWidth * 0.33f)
+                {
+                    turnAmount = Mathf.MoveTowards(turnAmount, -TurnMax, TurnAcceleration * Runner.DeltaTime);
+                    brakeTimer = 0f;
+                }
+                else if (x > screenWidth * 0.66f)
+                {
+                    turnAmount = Mathf.MoveTowards(turnAmount, TurnMax, TurnAcceleration * Runner.DeltaTime);
+                    brakeTimer = 0f;
+                }
+                else
+                {
+                    brakeTimer += Runner.DeltaTime;
+                    turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
+                }
+            }
+            else
+            {
+                turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
+                brakeTimer = 0f;
+            }
         }
         else
         {
-            // The center is the brake
-            isBraking = true;
+            turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
+            brakeTimer = 0f;
         }
-    }
-    else
-    {
-        // Gas straight
-        moveDir = Vector3.forward;
-    }
+
+        Vector3 inputDir = new Vector3(turnAmount, 0f, 1f).normalized;
+        moveDir = cameraRotationY * inputDir;
 #else
-        // Control on PC
         Vector3 input = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        isBraking = input == Vector3.zero;
-        moveDir = input;
+        bool isBraking = input == Vector3.zero;
+        moveDir = cameraRotationY * input.normalized;
+        if (isBraking)
+        {
+            brakeTimer += Runner.DeltaTime;
+        }
+        else
+        {
+            brakeTimer = 0f;
+        }
 #endif
 
         // Acceleration / braking
-        if (isBraking)
+        if (brakeTimer > 0f)
         {
-            _currentSpeed -= Braking * Runner.DeltaTime;
+            _currentSpeed -= Braking * brakeTimer * Runner.DeltaTime;
         }
         else
         {
@@ -77,23 +106,54 @@ public class PlayerMovement : NetworkBehaviour
         }
 
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0f, MaxSpeed);
+        float brakeFactor = Mathf.Clamp01(brakeTimer);
+        float currentSpeed = _currentSpeed * (1f - brakeFactor * BrakeStrength * Runner.DeltaTime);
 
-        moveDir = cameraRotationY * moveDir.normalized;
-        move = moveDir * _currentSpeed * Runner.DeltaTime;
+        move = moveDir * currentSpeed * Runner.DeltaTime;
 
+        // Gravity
+        if (_controller.isGrounded)
+        {
+            verticalVelocity = 0f;
+        }
+        else
+        {
+            verticalVelocity += Gravity * Runner.DeltaTime;
+        }
+
+        move.y = verticalVelocity;
         _controller.Move(move);
 
+        // Rotation with surface alignment
         if (move != Vector3.zero)
         {
-            // Smooth turn of the car in the direction of movement
-            Vector3 direction = move.normalized;
-            Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotation, TurnSpeed * Runner.DeltaTime);
+            Vector3 flatDirection = new Vector3(move.x, 0f, move.z);
+            if (flatDirection.sqrMagnitude > 0.001f)
+            {
+                // Raycast down to get ground normal
+                RaycastHit hit;
+                Vector3 rayOrigin = transform.position + Vector3.up * 0.1f;
+                Vector3 groundNormal = Vector3.up;
+
+                if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 2f))
+                {
+                    groundNormal = hit.normal;
+                }
+
+                // Rotation with terrain normal
+                Quaternion toRotation = Quaternion.LookRotation(flatDirection, groundNormal);
+                transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, TurnSpeed * Runner.DeltaTime);
+            }
+        }
+
+        // Visual camera yaw
+        var cam = Camera.GetComponent<FirstPersonCamera>();
+        if (cam != null)
+        {
+            cam.VisualYawTarget = turnAmount * cam.VisualYawMax;
         }
     }
 
-
-    
     public override void Spawned()
     {
         if (HasStateAuthority)
