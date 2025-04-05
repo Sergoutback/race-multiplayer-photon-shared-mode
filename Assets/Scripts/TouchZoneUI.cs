@@ -12,7 +12,7 @@ public class TouchZoneUI : MonoBehaviour
 
     void Update()
     {
-        // Сброс
+        // Reset color
         Left.color = defaultColor;
         Center.color = defaultColor;
         Right.color = defaultColor;
@@ -26,6 +26,11 @@ public class TouchZoneUI : MonoBehaviour
         {
             Vector2 pos = Input.mousePosition;
             HighlightZone(pos);
+        }
+        else if (Input.GetKey(KeyCode.Space))
+        {
+            // If the space bar is pressed, highlight the central area
+            Center.color = activeColor;
         }
     }
 
