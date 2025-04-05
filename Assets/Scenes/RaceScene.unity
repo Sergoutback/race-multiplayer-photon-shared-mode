@@ -2505,7 +2505,7 @@ Transform:
   m_GameObject: {fileID: 1232272932}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 3, z: 77}
+  m_LocalPosition: {x: 0, y: 3, z: 30}
   m_LocalScale: {x: 15, y: 15, z: 15}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -2915,37 +2915,6 @@ Transform:
   - {fileID: 23949627}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
---- !u!1 &1593148624
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1593148625}
-  m_Layer: 0
-  m_Name: FinishLine
-  m_TagString: Untagged
-  m_Icon: {fileID: 5132851093641282708, guid: 0000000000000000d000000000000000, type: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1593148625
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1593148624}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.00000001545431, y: -0.7071068, z: 0.00000001545431, w: 0.7071068}
-  m_LocalPosition: {x: 16, y: 0, z: -45}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1594355386
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3424,6 +3393,7 @@ GameObject:
   - component: {fileID: 1701195834}
   - component: {fileID: 1701195833}
   - component: {fileID: 1701195835}
+  - component: {fileID: 1701195836}
   m_Layer: 0
   m_Name: RaceManager
   m_TagString: Untagged
@@ -3443,6 +3413,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f007a3cc39152d648aa9660afc263988, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _RaceFinished:
+    _value: 0
   Checkpoints:
   - {fileID: 1232272933}
   - {fileID: 1807478358}
@@ -3454,7 +3426,6 @@ MonoBehaviour:
   - {fileID: 1999364550}
   - {fileID: 1633872939}
   - {fileID: 1064669705}
-  FinishLine: {fileID: 1593148625}
 --- !u!4 &1701195834
 Transform:
   m_ObjectHideFlags: 0
@@ -3485,6 +3456,26 @@ MonoBehaviour:
   SpeedText: {fileID: 444743532}
   PositionText: {fileID: 1115163406}
   LeaderboardText: {fileID: 592717526}
+--- !u!114 &1701195836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1701195832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1649141468
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1701195833}
+  - {fileID: 1701195835}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1001 &1754160980
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3921,6 +3912,5 @@ SceneRoots:
   - {fileID: 204950379}
   - {fileID: 1605464738}
   - {fileID: 753938164}
-  - {fileID: 1593148625}
   - {fileID: 1701195834}
   - {fileID: 77376519}

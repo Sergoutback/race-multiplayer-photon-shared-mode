@@ -9,8 +9,10 @@ public class Checkpoint : MonoBehaviour
     private void Awake()
     {
         _renderer = GetComponent<Renderer>();
-        Highlight(false); // at startup - gray
+        _renderer.material = new Material(_renderer.material);
+        Highlight(false);
     }
+
 
     public void Highlight(bool active)
     {

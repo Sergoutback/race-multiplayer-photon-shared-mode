@@ -1,10 +1,10 @@
+using Fusion;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
-using Fusion;
-
+using UnityEngine.SceneManagement;
 [System.Serializable]
 public class LeaderboardEntry
 {
@@ -14,19 +14,15 @@ public class LeaderboardEntry
     public float Time;
     public bool IsLocal;
 }
-
-public class UILeaderboard : MonoBehaviour
+public class UILeaderboard : NetworkBehaviour
 {
-    [Header("HUD UI")]
     public TextMeshProUGUI SpeedText;
     public TextMeshProUGUI PositionText;
-
-    [Header("Leaderboard")]
     public TextMeshProUGUI LeaderboardText;
 
     private PlayerMovement localPlayer;
 
-    private void Start()
+    public override void Spawned()
     {
         StartCoroutine(FindLocalPlayer());
     }
@@ -45,9 +41,10 @@ public class UILeaderboard : MonoBehaviour
 
     private void Update()
     {
+        if (!Runner || SceneManager.GetActiveScene().name != "RaceScene") return;
+
         if (localPlayer != null)
         {
-            // Velocity
             float speedKmh = localPlayer.CurrentSpeed * 3.6f;
             SpeedText.text = $"Speed: {speedKmh:F0} km/h";
 
@@ -59,9 +56,11 @@ public class UILeaderboard : MonoBehaviour
             }
         }
 
-        if (RaceManager.Instance != null && RaceManager.Instance.FinishLine != null)
+        if (RaceManager.Instance?.Checkpoints != null)
         {
-            UpdateLeaderboard(RaceManager.Instance.GetPlayers(), RaceManager.Instance.Checkpoints, RaceManager.Instance.FinishLine.position);
+            var cps = RaceManager.Instance.Checkpoints;
+            Vector3 finishPos = cps.Length > 0 ? cps[cps.Length - 1].position : Vector3.zero;
+            UpdateLeaderboard(RaceManager.Instance.GetPlayers(), cps, finishPos);
         }
     }
 
@@ -71,13 +70,13 @@ public class UILeaderboard : MonoBehaviour
             .OrderBy(p =>
             {
                 int nextIndex = Mathf.Clamp(p.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
-                Vector3 targetPos = nextIndex < checkpoints.Length ? checkpoints[nextIndex].position : finishPos;
+                Vector3 targetPos = nextIndex < checkpoints.Length && checkpoints[nextIndex] != null ? checkpoints[nextIndex].position : finishPos;
                 return Vector3.Distance(p.transform.position, targetPos);
             })
             .Select((p, index) =>
             {
                 int nextIndex = Mathf.Clamp(p.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
-                Vector3 targetPos = nextIndex < checkpoints.Length ? checkpoints[nextIndex].position : finishPos;
+                Vector3 targetPos = nextIndex < checkpoints.Length && checkpoints[nextIndex] != null ? checkpoints[nextIndex].position : finishPos;
 
                 return new LeaderboardEntry
                 {
@@ -100,7 +99,6 @@ public class UILeaderboard : MonoBehaviour
                 $"{colorTag}{entry.Position,2}. {entry.Name,-10}  {entry.DistanceToFinish,6:F1} m   {FormatTime(entry.Time)}{endTag}\n";
         }
     }
-
 
     private string FormatTime(float time)
     {

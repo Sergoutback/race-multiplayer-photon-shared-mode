@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/RaceScene.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab
+  - enabled: 1
+    path: Assets/Scenes/FinalResultsScene.unity
+    guid: 1fd9758be39dc8249b5e46703c193a68
   m_configObjects: {}

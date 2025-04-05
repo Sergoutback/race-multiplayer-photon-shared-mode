@@ -52,6 +52,17 @@ public class PlayerMovement : NetworkBehaviour
     {
         _controller = GetComponent<CharacterController>();
     }
+    
+    private void Start()
+    {
+        if (HasStateAuthority && CurrentCheckpointIndex == -1)
+        {
+            int firstIndex = 0;
+            var firstCheckpoint = RaceManager.Instance?.Checkpoints[firstIndex]?.GetComponent<Checkpoint>();
+            firstCheckpoint?.Highlight(true);
+        }
+    }
+
     public override void FixedUpdateNetwork()
     {
         Quaternion cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
@@ -223,6 +234,13 @@ public class PlayerMovement : NetworkBehaviour
                 CurrentCheckpointIndex++;
                 Debug.Log($"Checkpoint updated to {CurrentCheckpointIndex}");
                 UpdateCheckpointHighlight();
+
+                // End of race if last checkpoint is reached
+                if (CurrentCheckpointIndex >= RaceManager.Instance.Checkpoints.Length - 1)
+                {
+                    Debug.Log("Race Finished!");
+                    RaceManager.Instance.OnPlayerFinish(this);
+                }
             }
         }
     }
@@ -232,22 +250,24 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (RaceManager.Instance == null || RaceManager.Instance.Checkpoints == null) return;
 
-        // Save current as previous
         Checkpoint previousCheckpoint = currentTargetCheckpoint;
 
-        // Calculate the next checkpoint
-        int nextIndex = Mathf.Clamp(CurrentCheckpointIndex + 1, 0, RaceManager.Instance.Checkpoints.Length - 1);
+        // Always highlight checkpoint 0 at startup
+        int nextIndex = (CurrentCheckpointIndex < 0)
+            ? 0
+            : Mathf.Clamp(CurrentCheckpointIndex + 1, 0, RaceManager.Instance.Checkpoints.Length - 1);
+
         Transform next = RaceManager.Instance.Checkpoints[nextIndex];
         currentTargetCheckpoint = next.GetComponent<Checkpoint>();
 
-        // Turn off the previous one
         if (previousCheckpoint != null && previousCheckpoint != currentTargetCheckpoint)
             previousCheckpoint.Highlight(false);
 
-        // Turn on the current one
         if (currentTargetCheckpoint != null)
             currentTargetCheckpoint.Highlight(true);
     }
+
+
 
 
 
@@ -257,12 +277,41 @@ public class PlayerMovement : NetworkBehaviour
         {
             Camera = Camera.main;
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
-            
-            UpdateCheckpointHighlight();
+        
+            StartCoroutine(WaitAndHighlightCheckpoint());
         }
 
         RaceManager.Instance?.RegisterPlayer(this);
     }
+
+    private System.Collections.IEnumerator WaitAndHighlightCheckpoint()
+    {
+        while (RaceManager.Instance == null || RaceManager.Instance.Checkpoints == null)
+            yield return null;
+
+        // Find the nearest checkpoint
+        int closestIndex = 0;
+        float closestDistance = float.MaxValue;
+
+        for (int i = 0; i < RaceManager.Instance.Checkpoints.Length; i++)
+        {
+            float dist = Vector3.Distance(transform.position, RaceManager.Instance.Checkpoints[i].position);
+            if (dist < closestDistance)
+            {
+                closestDistance = dist;
+                closestIndex = i;
+            }
+        }
+
+        // Set the current one as "to the nearest" to highlight it specifically
+        CurrentCheckpointIndex = closestIndex - 1;
+
+        Debug.Log($"Auto-selected checkpoint index: {closestIndex} → CurrentCheckpointIndex set to {CurrentCheckpointIndex}");
+
+        UpdateCheckpointHighlight();
+    }
+
+
 
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
