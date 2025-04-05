@@ -41,8 +41,12 @@ public class PlayerMovement : NetworkBehaviour
 
     private float _currentSpeed = 0f;
     
+    [Networked]
+    public float NetworkedElapsedTime { get; set; }
+
     private float elapsedTime = 0f;
-    public float ElapsedTime => elapsedTime;
+    public float ElapsedTime => HasStateAuthority ? elapsedTime : NetworkedElapsedTime;
+
     
     public int CurrentCheckpointIndex = -1;
     public float DistanceToNextCheckpoint = 0f;
@@ -73,8 +77,11 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 moveDir = Vector3.zero;
         
         elapsedTime += Runner.DeltaTime;
-        
-        if (HasStateAuthority) UpdateCheckpointHighlight();
+
+        if (HasStateAuthority)
+        {
+            NetworkedElapsedTime = elapsedTime;
+        }
 
         // Flag for active turning
         bool isTurning = false;
