@@ -17,6 +17,10 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined
                 (runner, obj) => {
                     var playerMovement = obj.GetComponent<PlayerMovement>();
                     playerMovement.PlayerName = $"Player {player.PlayerId}";
+                    
+                    var ui = FindObjectOfType<UILeaderboard>();
+                    if (ui != null)
+                        playerMovement.LeaderboardUI = ui;
                 });
         }
     }

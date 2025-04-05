@@ -1584,6 +1584,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Camera: {fileID: 0}
+  _PlayerName: 
   TurnSpeed: 1
   Acceleration: 7
   MaxSpeed: 40
@@ -1592,14 +1593,15 @@ MonoBehaviour:
   WheelRightFront: {fileID: 4068913174666622}
   WheelLeftBack: {fileID: 4252074655309166}
   WheelRightBack: {fileID: 4944351361650126}
-  WheelLeftFrontModel: {fileID: 4429808383623004}
-  WheelRightFrontModel: {fileID: 4068913174666622}
   WheelRadius: 0.06
   MaxSteerAngle: 30
   TurnAcceleration: 1.5
   TurnMax: 1
   BrakeStrength: 1
   Gravity: -9.81
+  CurrentCheckpointIndex: -1
+  DistanceToNextCheckpoint: 0
+  LeaderboardUI: {fileID: 0}
 --- !u!1 &1672185482629448
 GameObject:
   m_ObjectHideFlags: 0

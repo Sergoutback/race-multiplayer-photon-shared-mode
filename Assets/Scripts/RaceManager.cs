@@ -10,7 +10,7 @@ public class RaceManager : NetworkBehaviour
 
     [Networked] public NetworkBool RaceFinished { get; set; }
 
-    private List<PlayerMovement> players = new List<PlayerMovement>();
+    private static List<PlayerMovement> players = new List<PlayerMovement>();
 
     public Transform[] Checkpoints;
 
@@ -43,21 +43,19 @@ public class RaceManager : NetworkBehaviour
 
     public void OnPlayerFinish(PlayerMovement player)
     {
-        if (RaceFinished) return;
+        if (RaceResults.Players.Any(p => p.Name == player.PlayerName))
+            return;
 
-        RaceFinished = true;
+        int position = RaceResults.Players.Count + 1;
 
-        RaceResults.Players = GetPlayers()
-            .OrderByDescending(p => p.CurrentCheckpointIndex)
-            .ThenBy(p => Vector3.Distance(p.transform.position, Checkpoints.Last().position))
-            .Select((p, index) => new RaceResults.Entry
-            {
-                Name = p.PlayerName,
-                Position = index + 1,
-                Time = p.ElapsedTime
-            }).ToList();
+        RaceResults.Players.Add(new RaceResults.Entry
+        {
+            Name = player.PlayerName,
+            Position = position,
+            Time = player.ElapsedTime
+        });
 
-        if (Object.HasStateAuthority)
+        if (Object.HasStateAuthority && RaceResults.Players.Count >= GetTotalPlayers())
         {
             Runner.LoadScene("FinalResultsScene", LoadSceneMode.Single);
         }

@@ -1,10 +1,11 @@
 using Fusion;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
+
 [System.Serializable]
 public class LeaderboardEntry
 {
@@ -14,70 +15,52 @@ public class LeaderboardEntry
     public float Time;
     public bool IsLocal;
 }
-public class UILeaderboard : NetworkBehaviour
+
+public class UILeaderboard : MonoBehaviour
 {
     public TextMeshProUGUI SpeedText;
-    public TextMeshProUGUI PositionText;
+    [FormerlySerializedAs("PositionText")] public TextMeshProUGUI CheckpointText;
     public TextMeshProUGUI LeaderboardText;
 
     private PlayerMovement localPlayer;
 
-    public override void Spawned()
+    public void SetLocalPlayer(PlayerMovement player)
     {
-        StartCoroutine(FindLocalPlayer());
-    }
-
-    private IEnumerator FindLocalPlayer()
-    {
-        while (localPlayer == null)
-        {
-            localPlayer = FindObjectsOfType<PlayerMovement>()
-                .FirstOrDefault(p => p.HasStateAuthority);
-
-            if (localPlayer == null)
-                yield return null;
-        }
+        localPlayer = player;
     }
 
     private void Update()
     {
-        if (!Runner || SceneManager.GetActiveScene().name != "RaceScene") return;
+        if (localPlayer == null || RaceManager.Instance == null || RaceManager.Instance.Checkpoints == null)
+            return;
 
-        if (localPlayer != null)
-        {
-            float speedKmh = localPlayer.CurrentSpeed * 3.6f;
-            SpeedText.text = $"Speed: {speedKmh:F0} km/h";
+        float speedKmh = localPlayer.CurrentSpeed * 3.6f;
+        SpeedText.text = $"Speed: {speedKmh:F0} km/h";
 
-            if (RaceManager.Instance != null)
-            {
-                int pos = RaceManager.Instance.GetPlayerPosition(localPlayer);
-                int total = RaceManager.Instance.GetTotalPlayers();
-                PositionText.text = $"Position: {pos} / {total}";
-            }
-        }
+        int checkpoint = Mathf.Clamp(localPlayer.CurrentCheckpointIndex + 1, 0, RaceManager.Instance.Checkpoints.Length);
+        int total = RaceManager.Instance.Checkpoints.Length;
+        CheckpointText.text = $"Checkpoint: {checkpoint} / {total}";
 
-        if (RaceManager.Instance?.Checkpoints != null)
-        {
-            var cps = RaceManager.Instance.Checkpoints;
-            Vector3 finishPos = cps.Length > 0 ? cps[cps.Length - 1].position : Vector3.zero;
-            UpdateLeaderboard(RaceManager.Instance.GetPlayers(), cps, finishPos);
-        }
+        UpdateLeaderboard(
+            FindObjectsOfType<PlayerMovement>().ToList(),
+            RaceManager.Instance.Checkpoints,
+            RaceManager.Instance.Checkpoints.Last().position
+        );
     }
+
+
 
     private void UpdateLeaderboard(List<PlayerMovement> players, Transform[] checkpoints, Vector3 finishPos)
     {
         var sorted = players
             .OrderBy(p => CalculateDistanceToFinish(p, checkpoints))
-            .Select((p, index) =>
+            .Select((p, index) => new LeaderboardEntry
             {
-                return new LeaderboardEntry
-                {
-                    Name = p.PlayerName,
-                    Position = index + 1,
-                    DistanceToFinish = CalculateDistanceToFinish(p, checkpoints),
-                    Time = p.ElapsedTime,
-                    IsLocal = p.HasStateAuthority
-                };
+                Name = p.PlayerName,
+                Position = index + 1,
+                DistanceToFinish = CalculateDistanceToFinish(p, checkpoints),
+                Time = p.ElapsedTime,
+                IsLocal = p.HasStateAuthority
             }).ToList();
 
         LeaderboardText.text = "";
@@ -88,23 +71,20 @@ public class UILeaderboard : NetworkBehaviour
             string endTag = entry.IsLocal ? "</color>" : "";
 
             LeaderboardText.text +=
-                $"{colorTag}{entry.Position,2}. {entry.Name,-10}  {entry.DistanceToFinish,6:F1} m   {FormatTime(entry.Time)}{endTag}\n";
+                $"{colorTag} Position:{entry.Position,2}   {entry.Name,-10}  {entry.DistanceToFinish,6:F1} m   {FormatTime(entry.Time)}{endTag}\n";
         }
     }
-
 
     private float CalculateDistanceToFinish(PlayerMovement player, Transform[] checkpoints)
     {
         float distance = 0f;
         int currentIndex = Mathf.Clamp(player.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
 
-        // distance from the player's position to the next checkpoint
         if (checkpoints.Length > 0 && currentIndex < checkpoints.Length)
         {
             distance += Vector3.Distance(player.transform.position, checkpoints[currentIndex].position);
         }
 
-        // distance from all remaining checkpoints to the finish
         for (int i = currentIndex; i < checkpoints.Length - 1; i++)
         {
             distance += Vector3.Distance(checkpoints[i].position, checkpoints[i + 1].position);
@@ -112,8 +92,6 @@ public class UILeaderboard : NetworkBehaviour
 
         return distance;
     }
-
-
 
     private string FormatTime(float time)
     {

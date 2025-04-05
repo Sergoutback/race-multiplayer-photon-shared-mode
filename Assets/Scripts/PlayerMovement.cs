@@ -1,3 +1,4 @@
+using System.Collections;
 using Fusion;
 using UnityEngine;
 
@@ -45,6 +46,8 @@ public class PlayerMovement : NetworkBehaviour
     
     public int CurrentCheckpointIndex = -1;
     public float DistanceToNextCheckpoint = 0f;
+    
+    public UILeaderboard LeaderboardUI;
     
     private Checkpoint currentTargetCheckpoint;
     
@@ -273,16 +276,31 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void Spawned()
     {
-        if (HasStateAuthority)
+        if (Object.HasInputAuthority)
         {
             Camera = Camera.main;
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
-        
+
+            StartCoroutine(WaitAndAttachUI());
             StartCoroutine(WaitAndHighlightCheckpoint());
         }
 
         RaceManager.Instance?.RegisterPlayer(this);
     }
+
+    private IEnumerator WaitAndAttachUI()
+    {
+        UILeaderboard ui = null;
+        while (ui == null)
+        {
+            ui = FindObjectOfType<UILeaderboard>();
+            yield return null;
+        }
+
+        ui.SetLocalPlayer(this);
+    }
+
+
 
     private System.Collections.IEnumerator WaitAndHighlightCheckpoint()
     {
