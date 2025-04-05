@@ -1587,7 +1587,13 @@ MonoBehaviour:
   TurnSpeed: 1
   Acceleration: 7
   MaxSpeed: 40
-  Braking: 5
+  Braking: 15
+  WheelLeftFront: {fileID: 4429808383623004}
+  WheelRightFront: {fileID: 4068913174666622}
+  WheelLeftBack: {fileID: 4252074655309166}
+  WheelRightBack: {fileID: 4944351361650126}
+  WheelRadius: 0.06
+  MaxSteerAngle: 30
   TurnAcceleration: 1.5
   TurnMax: 1
   BrakeStrength: 1
