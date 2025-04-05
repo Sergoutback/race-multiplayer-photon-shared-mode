@@ -4,6 +4,9 @@ using UnityEngine;
 public class PlayerMovement : NetworkBehaviour
 {
     public Camera Camera;
+    
+    [Networked]
+    public string PlayerName { get; set; }
 
     private CharacterController _controller;
 
@@ -37,6 +40,14 @@ public class PlayerMovement : NetworkBehaviour
 
     private float _currentSpeed = 0f;
     
+    private float elapsedTime = 0f;
+    public float ElapsedTime => elapsedTime;
+    
+    public int CurrentCheckpointIndex = -1;
+    public float DistanceToNextCheckpoint = 0f;
+    
+    private Checkpoint currentTargetCheckpoint;
+    
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
@@ -46,6 +57,10 @@ public class PlayerMovement : NetworkBehaviour
         Quaternion cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
         Vector3 move = Vector3.zero;
         Vector3 moveDir = Vector3.zero;
+        
+        elapsedTime += Runner.DeltaTime;
+        
+        if (HasStateAuthority) UpdateCheckpointHighlight();
 
         // Flag for active turning
         bool isTurning = false;
@@ -196,6 +211,45 @@ public class PlayerMovement : NetworkBehaviour
             cam.VisualYawTarget = turnAmount * cam.VisualYawMax;
         }
     }
+    private void OnTriggerEnter(Collider other)
+    {
+        var checkpoint = other.GetComponent<Checkpoint>();
+        if (checkpoint != null)
+        {
+            Debug.Log($"Entered checkpoint {checkpoint.Index}, current index = {CurrentCheckpointIndex}");
+
+            if (checkpoint.Index == CurrentCheckpointIndex + 1)
+            {
+                CurrentCheckpointIndex++;
+                Debug.Log($"Checkpoint updated to {CurrentCheckpointIndex}");
+                UpdateCheckpointHighlight();
+            }
+        }
+    }
+
+    
+    private void UpdateCheckpointHighlight()
+    {
+        if (RaceManager.Instance == null || RaceManager.Instance.Checkpoints == null) return;
+
+        // Save current as previous
+        Checkpoint previousCheckpoint = currentTargetCheckpoint;
+
+        // Calculate the next checkpoint
+        int nextIndex = Mathf.Clamp(CurrentCheckpointIndex + 1, 0, RaceManager.Instance.Checkpoints.Length - 1);
+        Transform next = RaceManager.Instance.Checkpoints[nextIndex];
+        currentTargetCheckpoint = next.GetComponent<Checkpoint>();
+
+        // Turn off the previous one
+        if (previousCheckpoint != null && previousCheckpoint != currentTargetCheckpoint)
+            previousCheckpoint.Highlight(false);
+
+        // Turn on the current one
+        if (currentTargetCheckpoint != null)
+            currentTargetCheckpoint.Highlight(true);
+    }
+
+
 
     public override void Spawned()
     {
@@ -203,10 +257,20 @@ public class PlayerMovement : NetworkBehaviour
         {
             Camera = Camera.main;
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
+            
+            UpdateCheckpointHighlight();
         }
 
         RaceManager.Instance?.RegisterPlayer(this);
     }
+
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_SetName(string name)
+    {
+        PlayerName = name;
+    }
+
 
     public float CurrentSpeed => _currentSpeed;
 }
