@@ -36,12 +36,11 @@ public class PlayerMovement : NetworkBehaviour
     private float verticalVelocity = 0f;
 
     private float _currentSpeed = 0f;
-
+    
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
     }
-
     public override void FixedUpdateNetwork()
     {
         Quaternion cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
@@ -206,4 +205,5 @@ public class PlayerMovement : NetworkBehaviour
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
         }
     }
+    public float CurrentSpeed => _currentSpeed;
 }
