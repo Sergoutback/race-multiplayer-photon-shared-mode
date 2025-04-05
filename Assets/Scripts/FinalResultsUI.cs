@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Fusion;
 
 public class FinalResultsUI : MonoBehaviour
 {
@@ -12,10 +13,7 @@ public class FinalResultsUI : MonoBehaviour
     {
         ShowResults();
 
-        backToLobbyButton.onClick.AddListener(() =>
-        {
-            SceneManager.LoadScene("RaceScene");
-        });
+        backToLobbyButton.onClick.AddListener(OnBackToLobby);
     }
 
     private void ShowResults()
@@ -34,5 +32,28 @@ public class FinalResultsUI : MonoBehaviour
         int seconds = Mathf.FloorToInt(time % 60f);
         int millis = Mathf.FloorToInt((time * 10f) % 10f);
         return $"{minutes:00}:{seconds:00}.{millis}";
+    }
+
+    private void OnBackToLobby()
+    {
+        // Stop the current Fusion session
+        if (RunnerExists())
+        {
+            var runner = FindObjectOfType<NetworkRunner>();
+            if (runner != null)
+            {
+                runner.Shutdown(true, ShutdownReason.Ok);
+            }
+        }
+
+        // Clear the results if necessary
+        RaceResults.Players.Clear();
+
+        SceneManager.LoadScene("RaceScene");
+    }
+
+    private bool RunnerExists()
+    {
+        return FindObjectOfType<NetworkRunner>() != null;
     }
 }

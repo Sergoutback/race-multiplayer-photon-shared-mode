@@ -17,6 +17,20 @@ public class RaceManager : NetworkBehaviour
     public override void Spawned()
     {
         if (Instance == null) Instance = this;
+
+        if (Object.HasStateAuthority)
+        {
+            // Clear the results when starting a new session
+            RaceResults.Players.Clear();
+        }
+
+        players.Clear(); // clear the local player list
+    }
+
+    private void OnDisable()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     public void RegisterPlayer(PlayerMovement player)

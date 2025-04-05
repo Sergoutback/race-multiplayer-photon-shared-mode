@@ -13,11 +13,13 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined
                 PlayerPrefab,
                 new Vector3(0, 0.3f, 0),
                 Quaternion.identity,
-                player, // InputAuthority
-                (runner, obj) => {
+                player,
+                (runner, obj) =>
+                {
                     var playerMovement = obj.GetComponent<PlayerMovement>();
-                    playerMovement.PlayerName = $"Player {player.PlayerId}";
-                    
+                    // Add uniqueness to the name
+                    playerMovement.PlayerName = $"Player {player.PlayerId}_{Random.Range(1000, 9999)}";
+
                     var ui = FindObjectOfType<UILeaderboard>();
                     if (ui != null)
                         playerMovement.LeaderboardUI = ui;
@@ -25,4 +27,3 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined
         }
     }
 }
-
