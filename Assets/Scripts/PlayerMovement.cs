@@ -12,7 +12,7 @@ public class PlayerMovement : NetworkBehaviour
     public float Acceleration = 7f;
     public float MaxSpeed = 25f;
     public float Braking = 15f;
-    
+
     [Header("Wheels")]
     public Transform WheelLeftFront;
     public Transform WheelRightFront;
@@ -21,7 +21,6 @@ public class PlayerMovement : NetworkBehaviour
 
     public float WheelRadius = 0.06f;
     public float MaxSteerAngle = 30f;
-
 
     [Header("Smooth turn")]
     public float TurnAcceleration = 1.5f;
@@ -49,7 +48,10 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 move = Vector3.zero;
         Vector3 moveDir = Vector3.zero;
 
-        // Universal "mobile" control: works on Android and in the editor/PC
+        // Flag for active turning
+        bool isTurning = false;
+
+        // Touch input (mobile)
         if (Input.touchCount > 0)
         {
             float screenWidth = Screen.width;
@@ -67,31 +69,31 @@ public class PlayerMovement : NetworkBehaviour
 
                 if (y < screenHeight * 0.5f)
                 {
-                    if (x < screenWidth * 0.33f)
-                        leftTouched = true;
-                    else if (x > screenWidth * 0.66f)
-                        rightTouched = true;
-                    else
-                        centerTouched = true;
+                    if (x < screenWidth * 0.33f) leftTouched = true;
+                    else if (x > screenWidth * 0.66f) rightTouched = true;
+                    else centerTouched = true;
                 }
             }
 
-            // Turn processing
             if (leftTouched)
+            {
+                isTurning = true;
                 turnAmount = Mathf.MoveTowards(turnAmount, -TurnMax, TurnAcceleration * Runner.DeltaTime);
+            }
             else if (rightTouched)
+            {
+                isTurning = true;
                 turnAmount = Mathf.MoveTowards(turnAmount, TurnMax, TurnAcceleration * Runner.DeltaTime);
+            }
             else
+            {
                 turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
+            }
 
-            // Brake treatment
-            if (centerTouched)
-                brakeTimer += Runner.DeltaTime;
-            else
-                brakeTimer = 0f;
+            brakeTimer = centerTouched ? brakeTimer + Runner.DeltaTime : 0f;
         }
-
-        else if (Input.GetMouseButton(0)) // Mouse for PC
+        // Mouse / Keyboard input (PC/editor)
+        else if (Input.GetMouseButton(0))
         {
             float screenWidth = Screen.width;
             float screenHeight = Screen.height;
@@ -105,10 +107,12 @@ public class PlayerMovement : NetworkBehaviour
             {
                 if (x < screenWidth * 0.33f)
                 {
+                    isTurning = true;
                     turnAmount = Mathf.MoveTowards(turnAmount, -TurnMax, TurnAcceleration * Runner.DeltaTime);
                 }
                 else if (x > screenWidth * 0.66f)
                 {
+                    isTurning = true;
                     turnAmount = Mathf.MoveTowards(turnAmount, TurnMax, TurnAcceleration * Runner.DeltaTime);
                 }
                 else
@@ -122,104 +126,71 @@ public class PlayerMovement : NetworkBehaviour
                 turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
             }
 
-            // Handling the brake taking into account the mouse and spacebar
-            if (centerMouse || Input.GetKey(KeyCode.Space))
-            {
-                brakeTimer += Runner.DeltaTime;
-            }
-            else
-            {
-                brakeTimer = 0f;
-            }
+            brakeTimer = (centerMouse || Input.GetKey(KeyCode.Space)) ? brakeTimer + Runner.DeltaTime : 0f;
         }
         else
         {
-            // Smoothly reset the turn
             turnAmount = Mathf.MoveTowards(turnAmount, 0f, TurnAcceleration * Runner.DeltaTime);
-
-            // Separate handling of space - if the mouse is not pressed
-            if (Input.GetKey(KeyCode.Space))
-            {
-                brakeTimer += Runner.DeltaTime;
-            }
-            else
-            {
-                brakeTimer = 0f;
-            }
+            brakeTimer = Input.GetKey(KeyCode.Space) ? brakeTimer + Runner.DeltaTime : 0f;
         }
 
-
-
-
+        // Movement direction and speed
         Vector3 inputDir = new Vector3(turnAmount, 0f, 1f).normalized;
         moveDir = cameraRotationY * inputDir;
 
-
-        // Acceleration / braking
-        if (brakeTimer > 0f)
-        {
-            _currentSpeed -= Braking * brakeTimer * Runner.DeltaTime;
-        }
-        else
-        {
-            _currentSpeed += Acceleration * Runner.DeltaTime;
-        }
-
+        _currentSpeed += (brakeTimer > 0f ? -Braking * brakeTimer : Acceleration) * Runner.DeltaTime;
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0f, MaxSpeed);
+
         float brakeFactor = Mathf.Clamp01(brakeTimer);
         float currentSpeed = _currentSpeed * (1f - brakeFactor * BrakeStrength * Runner.DeltaTime);
 
         move = moveDir * currentSpeed * Runner.DeltaTime;
 
-        // Gravity
-        if (_controller.isGrounded)
+        verticalVelocity = _controller.isGrounded ? 0f : verticalVelocity + Gravity * Runner.DeltaTime;
+        move.y = verticalVelocity;
+
+        _controller.Move(move);
+
+        // Calculate rotation amount (based on distance covered)
+        float rotationAmount = (_currentSpeed * Runner.DeltaTime * 360f) / (2f * Mathf.PI * WheelRadius);
+
+        // Rear wheels always rotate
+        if (WheelLeftBack != null)  WheelLeftBack.Rotate(Vector3.right, rotationAmount);
+        if (WheelRightBack != null) WheelRightBack.Rotate(Vector3.right, rotationAmount);
+
+        // Front wheels — either rotate or steer
+        if (isTurning)
         {
-            verticalVelocity = 0f;
+            // Apply steering (overwrite rotation visually)
+            Quaternion steerRotation = Quaternion.Euler(0f, turnAmount * MaxSteerAngle, 0f);
+            if (WheelLeftFront != null)  WheelLeftFront.localRotation = steerRotation;
+            if (WheelRightFront != null) WheelRightFront.localRotation = steerRotation;
         }
         else
         {
-            verticalVelocity += Gravity * Runner.DeltaTime;
+            // Apply normal wheel spinning
+            if (WheelLeftFront != null)  WheelLeftFront.Rotate(Vector3.right, rotationAmount);
+            if (WheelRightFront != null) WheelRightFront.Rotate(Vector3.right, rotationAmount);
         }
 
-        move.y = verticalVelocity;
-        _controller.Move(move);
-        
-        // Wheel rotation by speed
-        float rotationAmount = (_currentSpeed * Runner.DeltaTime * 360f) / (2f * Mathf.PI * WheelRadius);
-        if (WheelLeftFront != null)  WheelLeftFront.Rotate(Vector3.right, rotationAmount);
-        if (WheelRightFront != null) WheelRightFront.Rotate(Vector3.right, rotationAmount);
-        if (WheelLeftBack != null)   WheelLeftBack.Rotate(Vector3.right, rotationAmount);
-        if (WheelRightBack != null)  WheelRightBack.Rotate(Vector3.right, rotationAmount);
-
-        // Turning the front wheels left/right
-        Quaternion steerRotation = Quaternion.Euler(0f, turnAmount * MaxSteerAngle, 0f);
-        if (WheelLeftFront != null)  WheelLeftFront.localRotation = steerRotation * Quaternion.Euler(0f, 0f, WheelLeftFront.localRotation.z);
-        if (WheelRightFront != null) WheelRightFront.localRotation = steerRotation * Quaternion.Euler(0f, 0f, WheelRightFront.localRotation.z);
-
-
-        // Rotation with surface alignment
+        // Rotate the whole car to align with surface normal
         if (move != Vector3.zero)
         {
             Vector3 flatDirection = new Vector3(move.x, 0f, move.z);
             if (flatDirection.sqrMagnitude > 0.001f)
             {
-                // Raycast down to get ground normal
-                RaycastHit hit;
                 Vector3 rayOrigin = transform.position + Vector3.up * 0.1f;
                 Vector3 groundNormal = Vector3.up;
 
-                if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 2f))
-                {
+                if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 2f))
                     groundNormal = hit.normal;
-                }
 
-                // Rotation with terrain normal
                 Quaternion toRotation = Quaternion.LookRotation(flatDirection, groundNormal);
                 transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, TurnSpeed * Runner.DeltaTime);
             }
         }
 
-        // Visual camera yaw
+        // Apply camera visual yaw (if camera script is attached)
         var cam = Camera.GetComponent<FirstPersonCamera>();
         if (cam != null)
         {
