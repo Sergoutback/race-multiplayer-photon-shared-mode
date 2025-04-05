@@ -204,6 +204,9 @@ public class PlayerMovement : NetworkBehaviour
             Camera = Camera.main;
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
         }
+
+        RaceManager.Instance?.RegisterPlayer(this);
     }
+
     public float CurrentSpeed => _currentSpeed;
 }

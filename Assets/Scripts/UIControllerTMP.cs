@@ -36,12 +36,17 @@ public class UIControllerTMP : MonoBehaviour
         {
             float speedKmh = player.CurrentSpeed * 3.6f;
             SpeedText.text = $"Speed: {speedKmh:F0} km/h";
+            
+            if (RaceManager.Instance != null)
+            {
+                int position = RaceManager.Instance.GetPlayerPosition(player);
+                int total = RaceManager.Instance.GetTotalPlayers();
+                PositionText.text = $"Position: {position} / {total}";
+            }
         }
 
         raceTime += Time.deltaTime;
         TimerText.text = $"Time: {FormatTime(raceTime)}";
-
-        PositionText.text = $"Position: 1 / 1";
     }
 
     string FormatTime(float time)
