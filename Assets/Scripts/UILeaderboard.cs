@@ -67,22 +67,14 @@ public class UILeaderboard : NetworkBehaviour
     private void UpdateLeaderboard(List<PlayerMovement> players, Transform[] checkpoints, Vector3 finishPos)
     {
         var sorted = players
-            .OrderBy(p =>
-            {
-                int nextIndex = Mathf.Clamp(p.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
-                Vector3 targetPos = nextIndex < checkpoints.Length && checkpoints[nextIndex] != null ? checkpoints[nextIndex].position : finishPos;
-                return Vector3.Distance(p.transform.position, targetPos);
-            })
+            .OrderBy(p => CalculateDistanceToFinish(p, checkpoints))
             .Select((p, index) =>
             {
-                int nextIndex = Mathf.Clamp(p.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
-                Vector3 targetPos = nextIndex < checkpoints.Length && checkpoints[nextIndex] != null ? checkpoints[nextIndex].position : finishPos;
-
                 return new LeaderboardEntry
                 {
                     Name = p.PlayerName,
                     Position = index + 1,
-                    DistanceToFinish = Vector3.Distance(p.transform.position, targetPos),
+                    DistanceToFinish = CalculateDistanceToFinish(p, checkpoints),
                     Time = p.ElapsedTime,
                     IsLocal = p.HasStateAuthority
                 };
@@ -99,6 +91,29 @@ public class UILeaderboard : NetworkBehaviour
                 $"{colorTag}{entry.Position,2}. {entry.Name,-10}  {entry.DistanceToFinish,6:F1} m   {FormatTime(entry.Time)}{endTag}\n";
         }
     }
+
+
+    private float CalculateDistanceToFinish(PlayerMovement player, Transform[] checkpoints)
+    {
+        float distance = 0f;
+        int currentIndex = Mathf.Clamp(player.CurrentCheckpointIndex + 1, 0, checkpoints.Length - 1);
+
+        // distance from the player's position to the next checkpoint
+        if (checkpoints.Length > 0 && currentIndex < checkpoints.Length)
+        {
+            distance += Vector3.Distance(player.transform.position, checkpoints[currentIndex].position);
+        }
+
+        // distance from all remaining checkpoints to the finish
+        for (int i = currentIndex; i < checkpoints.Length - 1; i++)
+        {
+            distance += Vector3.Distance(checkpoints[i].position, checkpoints[i + 1].position);
+        }
+
+        return distance;
+    }
+
+
 
     private string FormatTime(float time)
     {
